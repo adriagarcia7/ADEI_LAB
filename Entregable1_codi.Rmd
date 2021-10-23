@@ -199,31 +199,25 @@ pie(summary(df$manufacturer))
 ## Variables quantitatives
 
 Creem noves variables derivades de les originals, com age
-També creem variables factor auxiliars per a les variables numèriques
 
 ```{r}
 ###   Nova variable auxiliar(factor) age
 df$age <-  2021 - df$year 
-df$aux_age<-factor(df$age)
 summary(df$age)
 barplot(table(df$age),main="Barplot Age Outcome - Factor",col="brown")
 
 ###   variable auxiliar(factor) mileage
 summary(df$model)
-df$aux_model<-factor(df$model)
 # It is a categorical(=factor) variable   NO PROBLEM
 
 ####   Variable auxiliar(factor) price
 summary(df$price)
-df$aux_price<-factor(df$price)
 
 ####   Variable auxiliar(factor) tax
 summary(df$transmission)
-df$aux_transmission<-factor(df$model)
 
 ####  Variable auxiliar(factor) mpg
 summary(df$mileage)
-df$aux_mpg<-factor(df$mpg)
 
 names(df)
 
@@ -592,7 +586,7 @@ df[ , vars_quantitatives ]<-res.impca$completeObs   # Once you have validated th
 ## Imputació de variables categòriques
 
 ```{r}
-vars_cat<-names(df)[c(1,2,4,6,9,10,11,18)]
+vars_cat<-names(df)[c(1,2,4,6,9,10,11,13)]
 summary(df[,vars_cat])
 res.immca<-imputeMCA(df[,vars_cat],ncp=10)
 summary(res.immca$completeObs)
@@ -691,20 +685,29 @@ summary(df[,vars_quantitatives])
 names(df)
 vars_quantitatives
 names(df)
-mout<-aq.plot(df[,c(3,5,7,8,12)],delta=qchisq(0.995,5),quan=0.995)
+mout<-aq.plot(df[,c(3,5,8,12)],delta=qchisq(0.995,5),quan=0.995)
 
 library(chemometrics)
 summary(df[,vars_quantitatives])
-mout<-Moutlier(df[,c(3,5,7,8,12)],quantile = 0.995, plot = TRUE)
+mout<-Moutlier(df[,c(3,5,8,12)],quantile = 0.995, plot = TRUE)
 
 ll<-which(mout$rd>5)
 Boxplot(mout$rd)
-df[ll,c(vars_res,vars_cat)]
+df[ll,c(vars_res,vars_quantitatives)]
 df$mout <- 0
 df$mout[ ll ]<-1
 df$mout <- factor( df$mout, labels=c( "NoMOut","YesMOut"))
 ```
 
+
+### Correlació amb les altres variables
+```{r}
+res <- cor(df[,vars_quantitatives])
+round(res, 2)
+
+library(corrplot)
+corrplot(res)
+```
 
 ## Profiling
 
@@ -739,35 +742,17 @@ res.catdes$test.chi2 # Global association to factors
 res.catdes$category  # Partial association to significative levels in factors
 ```
 
-
 ## Univariant Exploratory Analysis (EDA)
 
 ### Numeric variables - After outlier detection and imputation
 
 ```{r}
-# I am going to show some nice plots using ggplot library
-# 
-# ggplot
-# histogram absolute scale
-ggplot(data=df, aes(price)) + geom_histogram(aes(y=..count..),binwidth=500)
-ggplot(data=df, aes(price)) + geom_histogram(aes(y=..density..),fill="green",binwidth=500)
-ggplot(data=df, aes(price)) + geom_histogram(aes(y=..count..,fill=..count..),binwidth=500)
-ggplot(data=df, aes(price)) + geom_histogram(aes(y=..count..,fill=..count..),binwidth=500)+
-  scale_fill_gradient( low = "yellow", high = "red")
-
-# histogram escala relativa amb densitat
-ggplot(data=df, aes(price)) + 
-  geom_histogram(aes(y=..density..,fill=..density..),breaks=seq(0, 100000, by =1000),col="red") +labs(title="Histogram for price")+
-  geom_density(col=1,lwd=2) + labs(x="price", y="Proportion") + xlim(c(0, 100000)) +
-  # ylim(c(0,0.08))+
-  scale_fill_gradient( low = "yellow", high = "red")+theme_bw()
-
-hist(df$price,freq=F,main="Relative Histogram: Effective Speed",col=heat.colors(5))
+# Histograma price
+hist(df$price,freq=F,main="Relative Histogram: Price",col=heat.colors(5))
 mm=mean(df$price);ss=sd(df$price);mm;ss
 curve(dnorm(x,mm,ss),col="blue",lwd=2,add=T)
 
-# Boxplot
-
+# Boxplot price
 Boxplot(df$price,main="price",col="orange")
 b<-ggplot(data=df)+geom_boxplot(aes(x=1,y=price),fill="green",outlier.size = 3.0,varwidth=T)+geom_hline(yintercept=60000,lwd=2,col="red")+labs(title="Boxplot for price")+theme_bw()
 b
@@ -776,25 +761,11 @@ b
 ### Qualitative variables - After imputation
 
 ```{r}
-# Pie Chart
-library(RColorBrewer)
-b<-ggplot(data=df, aes(x=f.price,fill=f.price))+geom_bar(col="grey50")
-b<-b+coord_polar(theta="y")+scale_fill_brewer(palette="YlOrRd")+theme_bw()
-b
-#display.brewer.all()
-# Barplot
-b<-ggplot(data=df)+geom_bar(aes(f.price),fill="green",col="grey50")
-b
-
-b<-ggplot(data=df)+geom_bar(aes(x=f.price,fill=f.price),col="grey50")+scale_color_gradient(low="red",high="yellow")
-b
-
-# Graphics: base library
-# Pie
+# Pie Audi
 piepercent<-round(100*(table(df$Audi)/nrow(df)),dig=2); piepercent
 pie(table(df$Audi),col=heat.colors(2),labels=paste(piepercent,"%"))
 legend("topright", levels(df$Audi), cex = 0.8, fill = heat.colors(2))
 
-# Bar Chart
+# Bar Chart Audi
 barplot(table(df$Audi),main="Barplot Audi",col=c("green","red"))
 ```
