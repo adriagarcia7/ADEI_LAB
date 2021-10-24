@@ -1,7 +1,7 @@
 ---
 title: "Entregable 1"
 author: "Adrià García i Ruben Montagut"
-date: \today
+date: "24/10/2021"
 output:
   pdf_document:
     number_sections: yes
@@ -21,25 +21,8 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Presentation - Títol nivell 1
-## R Markdowns document - Títol nivell 2
-
-This is an R Markdown document. 
-We are showing some examples of GLMz. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. Use * to provide emphasis such as *italics* and **bold**.
-
-Create lists: Unordered * and +     or   ordered   1. 2.  
-
-  1. Item 1
-  2. Item 2
-    + Item 2a
-    + Item 2b
-
-# Header 1
-## Header 2
-
-## Data Description: 100,000 UK Used Car Data set
- 
-This data dictionary describes data  (https://www.kaggle.com/adityadesai13/used-car-dataset-ford-and-mercedes) - A sample of 5000 trips has been randomly selected from Mercedes, BMW, Volkwagen and Audi manufacturers. So, firstly you have to combine used car from the 4 manufacturers into 1 dataframe.
+# Data Description: 
+## 100,000 UK Used Car Data set
 
 The cars with engine size 0 are in fact electric cars, nevertheless Mercedes C class, and other given cars are not electric cars,so data imputation is requered. 
 
@@ -76,9 +59,11 @@ package.check <- lapply(requiredPackages, FUN = function(x) {
 #verify they are loaded
 search()
 
+knitr::opts_chunk$set(echo = T, results = "hide")
+
 ```
 
-## Seleccionem la mostra de 5000 observacions
+# Seleccionem la mostra de 5000 observacions
 
 ```{r}
 # Clear plots
@@ -91,9 +76,11 @@ setwd("C:/Users/thekr/OneDrive/Documentos/R/workspace")
 filepath<-"C:/Users/thekr/OneDrive/Documentos/R/workspace/"
 
 load(paste0(filepath,"MyOldCars-Raw.RData"))
+
+knitr::opts_chunk$set(echo = T, results = "hide")
 ```
 
-## Algunes funcions útils
+# Algunes funcions útils
 
 ```{r, echo=FALSE}
 
@@ -125,7 +112,7 @@ countX <- function(x,X) {
 ```
 
 
-## Initialization of counts for missings, outliers and errors. All numerical variables have to be checked before
+# Inicialització dels contadors de missings, outliers i errors.
 
 ```{r}
 
@@ -147,12 +134,16 @@ jouts<-rep(0,2*ncol(df))  # columns - variables
 ierrs<-rep(0,nrow(df))  # rows - trips
 jerrs<-rep(0,2*ncol(df))  # columns - variables
 ######################################################
+
+knitr::opts_chunk$set(echo = T, results = "hide")
 ```
 
+# Descripció i anàlisi univariant (missings/errors/outliers)
 
 ## Variables qualitatives / Factors
 
 Passem les variables no numèriques a factors per a treballar amb elles
+
 ```{r}
 summary(df)
 names(df)
@@ -172,13 +163,11 @@ barplot(table(df$Audi),main="Barplot Audi? Outcome - Factor",col=c("red","green"
 
 ### factoritzem model
 df$model<-factor(paste0(df$manufacturer,"-",df$model))
-levels(df$model)
-summary(df$model)
+barplot(summary(df$model),main="Model barplot",col="firebrick")
 
 ### factoritzem transmission
-levels(df$transmission)
 df$transmission <- factor(df$transmission)
-head(df)
+barplot(summary(df$transmission), main="Transmission barplot", col="firebrick")
 
 ### factoritzem fuelType
 df$fuelType <- factor(df$fuelType)
@@ -187,8 +176,7 @@ pie(summary(df$fuelType))
 
 ### factoritzem engineSize
 df$engineSize <- factor(df$engineSize)
-barplot(table(df$engineSize), main="Barplot engineSize Outcome - Factor", col="brown")
-summary(df$engineSize)
+barplot(table(df$engineSize), main="Enginesize barplot", col="firebrick")
 
 ### factoritzem manufacturer
 df$manufacturer <- factor(df$manufacturer)
@@ -203,28 +191,27 @@ Creem noves variables derivades de les originals, com age
 ```{r}
 ###   Nova variable auxiliar(factor) age
 df$age <-  2021 - df$year 
-summary(df$age)
-barplot(table(df$age),main="Barplot Age Outcome - Factor",col="brown")
+barplot(table(df$age),main="Age barplot",col="firebrick")
 
 ###   variable auxiliar(factor) mileage
 summary(df$model)
-# It is a categorical(=factor) variable   NO PROBLEM
 
 ####   Variable auxiliar(factor) price
-summary(df$price)
+barplot(table(df$price), main="Price barplot", col="firebrick")
 
 ####   Variable auxiliar(factor) tax
 summary(df$transmission)
+pie(summary(df$transmission))
 
 ####  Variable auxiliar(factor) mpg
 summary(df$mileage)
 
 names(df)
-
 ```
 
-
 ## Comprovem missing data, errors i detectem outliers de totes les variables
+
+### Variables numèriques
 
 ```{r}
 ###   Variable df$engineSize
@@ -294,7 +281,6 @@ var_out$souts
 var_out$souti
 
 llout<-which((df$tax<65 | df$tax>205))
-llout
 iouts[llout]<-iouts[llout]+1
 jouts[7]<-length(llout)
 df[llout,"tax"]<-NA 
@@ -416,7 +402,9 @@ df[llout,"age"]<-NA
  
 ```
 
-### De les variables categòriques només comprovem que no tinguin cap NA
+### Variables categòriques
+
+Només comprovem que no tinguin cap valor NA
 
 ```{r}
 ###   Variable df$model
@@ -453,13 +441,14 @@ sel<-which(is.na(df$model))
 sel
 ```
 
-### Com podem veure, a la nostra mostra no hi ha cap valor NA a les variables categòriques, per tant no hem de fer res
+Com podem veure, a la nostra mostra no hi ha cap valor NA a les variables categòriques, per tant no hem de fer res
 
 
-## Data Quality report (missings/errors/outliers)
+# Data Quality Report
 
 ## DECISIONS: 
-## 1. Eliminem les files on price és NA, ja que no ens interessa tenir missins a una variable resposta (fariem el mateix amb Audi però ja hem vist que no hi té cap NA)
+
+Eliminem les files on price és NA, ja que no ens interessa tenir missins a una variable resposta (fariem el mateix amb Audi però ja hem vist que no hi té cap NA)
 
 ```{r}
 sel <- which( is.na( df$price ) )
@@ -525,6 +514,8 @@ total_outliers
 ```
 
 
+# Imputació
+
 ## Imputació de variables numèriques
 
 ```{r}
@@ -544,21 +535,21 @@ summary(res.impca$completeObs)
 
 ```
 
-# Mirem cada variable
+Mirem cada variable
 
-#### variable price
+Variable price
 ```{r}
 imp_var<-which(res.impca$completeObs[,"price"] < 500)
 res.impca$completeObs[imp_var,"price"] <- 500
 ```
 
-#### variable mileage
+Variable mileage
 ```{r}
 imp_var<-which(res.impca$completeObs[,"mileage"] > 117850)
 res.impca$completeObs[imp_var,"mileage"] <- 117850
 ```
 
-#### variable tax
+Variable tax
 ```{r}
 imp_var<-which(res.impca$completeObs[,"tax"] < 65)
 res.impca$completeObs[imp_var,"tax"] <- 65
@@ -566,13 +557,13 @@ imp_var<-which(res.impca$completeObs[,"tax"] > 205)
 res.impca$completeObs[imp_var,"tax"] <- 205
 ```
 
-#### variable mpg
+Variable mpg
 ```{r}
 imp_var<-which(res.impca$completeObs[,"mpg"] > 111)
 res.impca$completeObs[imp_var,"mpg"] <- 111
 ```
 
-#### variable age
+Variable age
 ```{r}
 imp_var<-which(res.impca$completeObs[,"age"] > 14)
 res.impca$completeObs[imp_var,"age"] <- 14
@@ -596,12 +587,9 @@ df[ , vars_cat ]<-res.immca$completeObs   # Once you have validated the process
 ```
 
 
-## Discretization 
+# Discretizació
 
 ```{r}
-####    Discretization of all numerics, for example price
-# In this case, discretization: 4 levels are considered, from the quartiles
-
 ###    Discretization of price 
 vars_quantitatives
 summary(df$price)
@@ -675,7 +663,7 @@ table(df$f.age,useNA="always")
 ```
 
 
-## Multivariant Outliers
+# Outliers multivariants
 
 ```{r}
 library(mvoutlier)
@@ -693,14 +681,14 @@ mout<-Moutlier(df[,c(3,5,8,12)],quantile = 0.995, plot = TRUE)
 
 ll<-which(mout$rd>5)
 Boxplot(mout$rd)
-df[ll,c(vars_res,vars_quantitatives)]
+##df[ll,c(vars_res,vars_quantitatives)]
 df$mout <- 0
 df$mout[ ll ]<-1
 df$mout <- factor( df$mout, labels=c( "NoMOut","YesMOut"))
 ```
 
 
-### Correlació amb les altres variables
+# Correlació amb les altres variables
 ```{r}
 res <- cor(df[,vars_quantitatives])
 round(res, 2)
@@ -709,7 +697,7 @@ library(corrplot)
 corrplot(res)
 ```
 
-## Profiling
+# Profiling
 
 ```{r}
 ##############################################################################
@@ -724,6 +712,9 @@ res.condes<-condes(df[,c(vars_res,vars_quantitatives,vars_cat)],1)
 res.condes$quanti  # Global association to numeric variables
 res.condes$quali # Global association to factors
 res.condes$category  # Partial association to significative levels in factors
+
+knitr::opts_chunk$set(echo = T, results = "hide")
+
 ```
 
 ```{r}
@@ -740,11 +731,14 @@ res.catdes$quanti.var  # Global association to numeric variables
 res.catdes$quanti # Partial association of numeric variables to levels of outcome factor
 res.catdes$test.chi2 # Global association to factors
 res.catdes$category  # Partial association to significative levels in factors
+
+knitr::opts_chunk$set(echo = T, results = "hide")
+
 ```
 
-## Univariant Exploratory Analysis (EDA)
+# Univariant Exploratory Analysis (EDA)
 
-### Numeric variables - After outlier detection and imputation
+## Numeric variables - After outlier detection and imputation
 
 ```{r}
 # Histograma price
@@ -758,7 +752,7 @@ b<-ggplot(data=df)+geom_boxplot(aes(x=1,y=price),fill="green",outlier.size = 3.0
 b
 ```
 
-### Qualitative variables - After imputation
+## Qualitative variables - After imputation
 
 ```{r}
 # Pie Audi
