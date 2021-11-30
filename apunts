@@ -1,0 +1,16 @@
+primers 4 grafics:
+residuals vs fitted: homocedasticitat: mirar la variabilitat en cada valor de X (como varien les Y en un punt concret)
+qq-norm: mirar que no es separin molt els valors de la linea
+scale-location: heterodasticitat: mirar que no es separin molt
+
+analitzar boxTidwell:
+0->logaritme
+0.5->sqrt
+superior 2(o -2)->elevar quadrat
+
+al afegir factors: categoria base no apareix, les altres ens mostren les millores esperades respecte aquesta categoria
+en cas de fueltype la baseline es Diesel, de transmission es Auto
+p-valor<0.05 -> es torna significatiu
+p-valor casi 1->no hi ha modificacio respecte el target que estem mirant
+
+només afegirem les que hi ha al exemple de lab (el model es opcional, depen si millora les dades o no)
