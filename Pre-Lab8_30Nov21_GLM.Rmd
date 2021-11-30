@@ -220,6 +220,10 @@ m6 <- update(m6, ~.-poly(tax,2),data=df2)
 m6 <- update(m6, ~.+tax,data=df2)
 summary(m6)
 
+#Include interactions
+m6 <- update(m6, ~.+transmission*manufacturer,data=df2)
+summary(m6)
+
 marginalModelPlots(m6)
 avPlots(m5,id=list(method=hatvalues(m5),n=5))
 crPlots(m5,id=list(method=cooks.distance(m5),n=5))
