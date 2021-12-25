@@ -1,0 +1,307 @@
+---
+title: "Entregable 3"
+author: "Adrià García and Rubén Montagut"
+date: \today
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+  html_document:
+    toc: no
+    toc_depth: '4'
+  word_document:
+    toc: no
+    toc_depth: '4'
+geometry: left=1.9cm,right=1.9cm,top=1.25cm,bottom=1.52cm
+fontsize: 18pt
+subtitle: 'Numeric and Binary targets Forecasting Models'
+classoption: a4paper
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data Description: 100,000 UK Used Car Data set
+
+  -   manufacturer	Factor: Audi, BMW, Mercedes or Volkswagen
+  -   model	Car model
+  -   year	registration year
+  -   price	price in £
+  -   transmission	type of gearbox
+  -   mileage	distance used
+  -   fuelType	engine fuel
+  -   tax	road tax
+  -   mpg	Consumption in miles per gallon   
+  -   engineSize	size in litres
+
+
+# Load Required Packages: to be increased over the course
+
+```{r}
+# Load Required Packages: to be increased over the course
+options(contrasts=c("contr.treatment","contr.treatment"))
+requiredPackages <- c("effects","FactoMineR","car", "factoextra","RColorBrewer","ggplot2","dplyr","ggmap","ggthemes","knitr")
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(requiredPackages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+#verify they are loaded
+search()
+```
+
+# Carreguem les dades modificades a l'últim entregable
+
+```{r}
+setwd("C:/Users/thekr/OneDrive/Documentos/R/workspace")
+filepath<-"C:/Users/thekr/OneDrive/Documentos/R/workspace/"
+
+load(paste0(filepath,"MyOldCars-5000Modif.RData"))
+options(contrasts=c("contr.treatment","contr.treatment"))
+
+save(df,file = "C:/Users/thekr/OneDrive/Documentos/R/workspace/MyOldCars-5000Del3.RData")
+```
+
+# Primer comprovem la normalitat de la nostra variable target
+
+```{r}
+hist(df$price,50,freq=F,col="orange",border = "orange")
+mm<-mean(df$price)
+ss<-sd(df$price)
+curve(dnorm(x,mean=mm,sd=ss),col="red",lwd=2,lty=3, add=T)
+shapiro.test(df$price)
+```
+
+Podem veure, pels resultats de l'histograma i del shapiro test, que el target "price" no segueix una distribució normal. Ja que no trobem simetria al gràfic i el p-value del test ens dona un número molt més petit de 0.05.
+
+# Models linears: usant variables numèriques
+
+```{r}
+names(df)
+vars_con<-names(df)[c(3,5,7,8,12)]
+vars_dis<-names(df)[c(1:2,4,6,9,10)]
+vars_res<-names(df)[c(3)]
+
+vars_con
+ll<-which(df$age==0);ll
+df$age[ll]<-0.5
+ll<-which(df$tax==0);ll
+df$tax[ll]<-0.5
+```
+
+
+## Model 1:
+```{r}
+m1<-lm(price~mileage+tax+mpg+age,data=df)
+summary(m1)
+```
+Com veiem al summary, segons el multiple R-Squared, el model explica el 51.8% de la variabilitat del target. Tot i que també veiem, amb el p-valor, que ho podem descartar.
+
+```{r}
+vif(m1) #Variance inflation factor: multicorrelation
+```
+Segons els resultats del vif, ens podem quedar amb totes les variables que estem usant fins ara.
+
+```{r}
+par(mfrow=c(2,2))
+plot(m1,id.n=0)
+```
+Si veiem els gràfics, podem treure algunes conclusions:
+
+- Tenim prou homocedasticitat, però per alguns valors de X si que hi ha Y molt separades de les altres (ex: 30000 o    40000).
+- Al gràfic de distribució normal, podem veure com al final hi ha valors que se separen considerablement de la línea.
+- De moment no tenim gaire heterodasticitat.
+
+```{r}
+par(mfrow=c(1,1))
+library(MASS)
+boxcox(price~mileage+tax+mpg+age,data=df)
+```
+Com el valor lambda és molt proper a 0, aplicarem una transformació logarítmica a la variable target "price".
+
+## Model 2
+```{r}
+# New model:
+m2<-lm(log(price)~mileage+tax+mpg+age,data=df)
+summary(m2)
+vif(m2) #Not changed because explanatory variables have not changed
+```
+Podem observar que la multiple R-squared (o la explicabilitat) ha augmentat, en aquest cas fins a 60.4%, per tant el model és més representatiu. El vif no ha canviat ja que estem usant les mateixes variables numèriques.
+
+```{r}
+summary(df$tax)
+# Transformations to my regresors?
+boxTidwell(log(price) ~ mileage+mpg+age,data=df[!df$mout=="YesMOut",])
+# Power transformations of the predictors in a linear model
+par(mfrow=c(2,2))
+plot(m2,id.n=0)
+```
+Si mirem els gràfics obinguts, podem veure que ha millorat una mica la normalitat, pero la homocedasticitat i la heterodasticitat no. Per tant seguirem aplicant transformacions.
+Hem fet el boxTidwell sense la variable "tax" ja que ens dona errors tot i no tenir cap valor fora del normal o esperat.
+
+```{r}
+par(mfrow=c(1,1))
+residualPlots(m2,id=list(method=cooks.distance(m2),n=10)) 
+marginalModelPlots(m2)
+```
+
+Segons el boxTidwell, aplicarem el logaritme a la variable mileage en el nou model.
+
+## Model 3
+```{r}
+m3<-lm(log(price)~log(mileage)+mpg+age,data=df[!df$mout=="YesMOut",])
+summary(m3)
+# Validation and effects consideration:
+Anova(m3) #Net effect test
+vif(m3)
+par(mfrow=c(2,2))
+plot(m3,id.n=0)
+```
+En aquest tercer model, obtenim una explicabilitat del 56.7% (inferior a la dels altres models). Però les altres característiques, comprovades als gràfics QQNorm o Residuals vs Fitted, han millorat respecte l'anterior model.
+També podem veure que la variable log(mileage) no depèn del valor del target price (vist tant a l'Anova com al summary).
+
+```{r}
+par(mfrow=c(1,1))
+residualPlots(m3,id=list(method=cooks.distance(m3),n=10))
+marginalModelPlots(m3)
+
+df2 <- df[!df$mout=="YesMOut",]
+df2 <- df2[row.names(df2)!="20136",]
+df2 <- df2[row.names(df2)!="44596",]
+df2 <- df2[row.names(df2)!="33222",]
+df2 <- df2[row.names(df2)!="33260",]
+df2 <- df2[row.names(df2)!="35343",]
+```
+Acabem d'eliminar tant els multivariate outliers com algunes observacions que podien ser causants d'empitjorar la normalitat del model.
+
+## Model 4
+```{r}
+m4<-lm(log(price)~log(mileage)+mpg+age,data=df2)
+summary(m4)
+
+par(mfrow=c(2,2))
+plot(m4,id.n=0)
+```
+Amb aquest quart model hem assolit una normalitat casi perfecta, així com una bona homocedasticitat i heterodasticitat. També podem veure que l'explicabilitat ha augmentat una mica, fins a 57.6%.
+
+```{r}
+par(mfrow=c(1,1))
+residualPlots(m4,id=list(method=cooks.distance(m4),n=10))
+marginalModelPlots(m4)
+```
+En aquests gràfics també podem comprovar com hi ha linealitat en les variables usades al model.
+
+## Model 5
+```{r}
+m5<-lm(log(price)~log(mileage)+poly(tax,2)+poly(mpg,2)+poly(age,2),data=df2)
+summary(m5)
+vif(m5)
+
+anova(m4, m5) #Does the variable age squared have to be included in my model
+
+par(mfrow=c(2,2))
+plot(m5)
+```
+Per últim, hem provat d'elaborar un model on aparegui també la variable tax i usant el quadrat de totes les variables explicatives. Com podem veure, l'explicabilitat ha augmentat a 60.2% i a més, comparant amb la funció "anova", obtenim que aquest nou model 'm5' és millor que l'anterior m4, per tant ens quedarem amb aquest com a definitiu.
+
+
+# Afegim factors
+
+```{r}
+# Afegim la variable fuelType
+m6 <- update(m5, ~.+fuelType,data=df2)
+vif(m6)
+summary(m6)
+Anova(m6)
+par(mfrow=c(2,2))
+plot(m6,id.n=0)
+# Afegim la variable transmission
+m7 <- update(m6, ~.+transmission,data=df2)
+summary(m7)
+par(mfrow=c(2,2))
+plot(m7)
+vif(m7)
+par(mfrow=c(1,1))
+residualPlots(m7,id=list(method=cooks.distance(m7),n=10))
+# Reparametrization of engine size into factor:
+df2$engineSize <- as.integer(df2$engineSize)
+par(mfrow=c(1,1))
+hist(df2$engineSize)
+quantile(df2$engineSize, c(0.33,0.66,1))
+df2$engineSize2 <- factor(cut(df2$engineSize, breaks = c(0,7,11,27)))
+table(df2$engineSize2)
+#l'afegim
+m8 <- update(m7, ~.+engineSize2,data=df2)
+summary(m8)
+par(mfrow=c(2,2))
+plot(m8, id.n = 0)
+#afegim manufacturer
+m9 <- update(m8, ~.+manufacturer,data=df2)
+summary(m9)
+par(mfrow=c(2,2))
+plot(m9, id.n = 0)
+
+anova(m8,m9)
+```
+Acabem d'afegir totes les variables factor que considerem dins dels corresponents models. Com podem veure amb l'anova, l'ultim model 'm9' és el més indicat per a treballar, pero ara hi aplicarem algun canvi, eliminant o modificant variables que no ens aporten res.
+
+```{r}
+#eliminem tax2
+m6 <- update(m6, ~.-poly(tax,2),data=df2)
+m6 <- update(m6, ~.+tax,data=df2)
+summary(m6)
+#Include interactions
+m6 <- update(m6, ~.+transmission*manufacturer,data=df2)
+summary(m6)
+marginalModelPlots(m6)
+avPlots(m5,id=list(method=hatvalues(m5),n=5))
+crPlots(m5,id=list(method=cooks.distance(m5),n=5))
+library(effects)
+plot(allEffects(m5))
+vif(m6)
+summary(m6)
+Anova(m6)
+plot(allEffects(m6))
+m7 <- step( m6, k=log(nrow(df[!df$mout=="YesMOut",])))
+m8 <- step( m5, k=log(nrow(df[!df$mout=="YesMOut",])))
+AIC(m5,m6,m7,m8)
+summary(m7)
+```
+
+# Diagnostics for numeric variables:
+
+```{r}
+dfwork <- df[!df$mout=="YesMOut",]
+m5<-lm(log(price)~log(mileage)+poly(tax,2)+poly(mpg,2)+poly(age,2),data=dfwork)
+vif(m5)
+summary(m5)
+Anova(m5)
+plot(allEffects(m5))
+par(mfrow=c(2,2))
+plot(m5,id.n=0)
+par(mfrow=c(1,1))
+llres <- which(abs(rstudent(m5))>3);llres
+which(row.names(dfwork) %in% names(rstudent(m5)[llres]))
+influencePlot(m5, id=list(n=10))
+Boxplot(cooks.distance(m5),id=list(labels=row.names(dfwork)))
+llout<-which(abs(cooks.distance(m5))>0.05);length(llout)
+which(row.names(dfwork) %in% names(cooks.distance(m5)[llout]))
+llrem<-unique(c(llout,llres));llrem
+m7<-lm(log(price)~ mileage + sqrt(1/mpg) + I(engineSize^(-2/3)) + age + 
+    fuelType + transmission,data=dfwork[-llrem,])
+vif(m7)
+summary(m7)
+Anova(m7)
+plot(allEffects(m7))
+par(mfrow=c(2,2))
+plot(m7,id.n=0)
+par(mfrow=c(1,1))
+marginalModelPlots(m7)
+avPlots(m7)
+crPlots(m7)
+influencePlot(m7)
+```
