@@ -250,14 +250,37 @@ anova(m8,m9)
 Acabem d'afegir totes les variables factor que considerem dins dels corresponents models. Com podem veure amb l'anova, l'ultim model 'm9' és el més indicat per a treballar, pero ara hi aplicarem algun canvi, eliminant o modificant variables que no ens aporten res.
 
 ```{r}
-#eliminem tax2
-m6 <- update(m6, ~.-poly(tax,2),data=df2)
-m6 <- update(m6, ~.+tax,data=df2)
-summary(m6)
+#eliminem tax1 i tax2
+m9 <- update(m9, ~.-poly(tax,2),data=df2)
+summary(m9)
 #Include interactions
-m6 <- update(m6, ~.+transmission*manufacturer,data=df2)
-summary(m6)
-marginalModelPlots(m6)
+m9 <- update(m9, ~.+transmission*manufacturer,data=df2)
+summary(m9)
+marginalModelPlots(m9)
+```
+Hem eliminat del nostre model la variable 'tax' ja que no era prou significativa. També hem afegit una interacció entre factors, en aquest cas entre transmission i manufacturer, el qual ens dona informacio significativa pel nostre model i ens manté l'explicabilitat.
+
+```{r}
+m10 <- update(m9, ~.+fuelType*mpg,data=df2)
+summary(m10)
+anova(m9,m10)
+
+par(mfrow=c(2,2))
+plot(m10, id.n = 0)
+marginalModelPlots(m10)
+ll1 <- Boxplot(rstudent(m10));ll1;
+```
+Per últim, hem afegit la interacció entre fuelType i mpg, que ens aporta més informació rellevant al model. Donarem aquest model m10 com a definitiu per explicar la variable target 'price'.
+
+Com podem veure al summary, l'explicabilitat és del 86.5% i a més totes les variables que apareixen al model tenen un p-value per sota de 0.05, per tant son significatives pel nostre model.
+
+També veiem que l'homocedasticitat i heterodasticitat son correctes i tenim un model amb poques desviacions en la distribució normal.
+
+Tenint en compte que hem passat d'un 50-60% d'explicabilitat a representar més del 85%, ens val la pena mantenir totes aquestes dades al model.
+
+```{r}
+
+
 avPlots(m5,id=list(method=hatvalues(m5),n=5))
 crPlots(m5,id=list(method=cooks.distance(m5),n=5))
 library(effects)
@@ -265,7 +288,7 @@ plot(allEffects(m5))
 vif(m6)
 summary(m6)
 Anova(m6)
-plot(allEffects(m6))
+plot(allEffects(m10))
 m7 <- step( m6, k=log(nrow(df[!df$mout=="YesMOut",])))
 m8 <- step( m5, k=log(nrow(df[!df$mout=="YesMOut",])))
 AIC(m5,m6,m7,m8)
