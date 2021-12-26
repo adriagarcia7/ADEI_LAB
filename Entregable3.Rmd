@@ -65,7 +65,6 @@ options(contrasts=c("contr.treatment","contr.treatment"))
 
 save(df,file = "C:/Users/thekr/OneDrive/Documentos/R/workspace/MyOldCars-5000Del3.RData")
 ```
-
 # Primer comprovem la normalitat de la nostra variable target
 
 ```{r}
@@ -85,7 +84,6 @@ names(df)
 vars_con<-names(df)[c(3,5,7,8,12)]
 vars_dis<-names(df)[c(1:2,4,6,9,10)]
 vars_res<-names(df)[c(3)]
-
 vars_con
 ll<-which(df$age==0);ll
 df$age[ll]<-0.5
@@ -168,7 +166,6 @@ També podem veure que la variable log(mileage) no depèn del valor del target p
 par(mfrow=c(1,1))
 residualPlots(m3,id=list(method=cooks.distance(m3),n=10))
 marginalModelPlots(m3)
-
 df2 <- df[!df$mout=="YesMOut",]
 df2 <- df2[row.names(df2)!="20136",]
 df2 <- df2[row.names(df2)!="44596",]
@@ -182,7 +179,6 @@ Acabem d'eliminar tant els multivariate outliers com algunes observacions que po
 ```{r}
 m4<-lm(log(price)~log(mileage)+mpg+age,data=df2)
 summary(m4)
-
 par(mfrow=c(2,2))
 plot(m4,id.n=0)
 ```
@@ -200,9 +196,7 @@ En aquests gràfics també podem comprovar com hi ha linealitat en les variables
 m5<-lm(log(price)~log(mileage)+poly(tax,2)+poly(mpg,2)+poly(age,2),data=df2)
 summary(m5)
 vif(m5)
-
 anova(m4, m5) #Does the variable age squared have to be included in my model
-
 par(mfrow=c(2,2))
 plot(m5)
 ```
@@ -244,7 +238,6 @@ m9 <- update(m8, ~.+manufacturer,data=df2)
 summary(m9)
 par(mfrow=c(2,2))
 plot(m9, id.n = 0)
-
 anova(m8,m9)
 ```
 Acabem d'afegir totes les variables factor que considerem dins dels corresponents models. Com podem veure amb l'anova, l'ultim model 'm9' és el més indicat per a treballar, pero ara hi aplicarem algun canvi, eliminant o modificant variables que no ens aporten res.
@@ -264,7 +257,6 @@ Hem eliminat del nostre model la variable 'tax' ja que no era prou significativa
 m10 <- update(m9, ~.+fuelType*mpg,data=df2)
 summary(m10)
 anova(m9,m10)
-
 par(mfrow=c(2,2))
 plot(m10, id.n = 0)
 marginalModelPlots(m10)
@@ -278,53 +270,148 @@ També veiem que l'homocedasticitat i heterodasticitat son correctes i tenim un 
 
 Tenint en compte que hem passat d'un 50-60% d'explicabilitat a representar més del 85%, ens val la pena mantenir totes aquestes dades al model.
 
-```{r}
 
 
-avPlots(m5,id=list(method=hatvalues(m5),n=5))
-crPlots(m5,id=list(method=cooks.distance(m5),n=5))
-library(effects)
-plot(allEffects(m5))
-vif(m6)
-summary(m6)
-Anova(m6)
-plot(allEffects(m10))
-m7 <- step( m6, k=log(nrow(df[!df$mout=="YesMOut",])))
-m8 <- step( m5, k=log(nrow(df[!df$mout=="YesMOut",])))
-AIC(m5,m6,m7,m8)
-summary(m7)
-```
-
-# Diagnostics for numeric variables:
+# Binary Logistics Regression
 
 ```{r}
-dfwork <- df[!df$mout=="YesMOut",]
-m5<-lm(log(price)~log(mileage)+poly(tax,2)+poly(mpg,2)+poly(age,2),data=dfwork)
-vif(m5)
-summary(m5)
-Anova(m5)
-plot(allEffects(m5))
-par(mfrow=c(2,2))
-plot(m5,id.n=0)
-par(mfrow=c(1,1))
-llres <- which(abs(rstudent(m5))>3);llres
-which(row.names(dfwork) %in% names(rstudent(m5)[llres]))
-influencePlot(m5, id=list(n=10))
-Boxplot(cooks.distance(m5),id=list(labels=row.names(dfwork)))
-llout<-which(abs(cooks.distance(m5))>0.05);length(llout)
-which(row.names(dfwork) %in% names(cooks.distance(m5)[llout]))
-llrem<-unique(c(llout,llres));llrem
-m7<-lm(log(price)~ mileage + sqrt(1/mpg) + I(engineSize^(-2/3)) + age + 
-    fuelType + transmission,data=dfwork[-llrem,])
-vif(m7)
-summary(m7)
-Anova(m7)
-plot(allEffects(m7))
-par(mfrow=c(2,2))
-plot(m7,id.n=0)
-par(mfrow=c(1,1))
-marginalModelPlots(m7)
-avPlots(m7)
-crPlots(m7)
-influencePlot(m7)
+res.cat <- catdes(df, num.var = which(names(df)=="Audi"))
+res.cat$quanti.var
+res.cat$test.chi2
 ```
+
+From the test.chi2 we can see that model and manufacturer have something really clear with the Audi, that's because Audi is a variable made from manufacturer(yes if manufacturer is Audi and no the other way), as we have p-value of 0. Which means that we cannot use model and manufacturer as predictors.
+
+
+
+Steps to follow:
+1. Enter all relevant numerical variables in the model
+2. See if you need to replace a number with its equivalent factor
+3. Add to the best model of step 2, the main effects of the factors and retain the significant net effects.
+4. Add interactions: between factor-factor and between factor-numeric (doubles).
+5. Diagnosis of waste and observations. Lack of adjustment and / or influential.
+## (1) Numerical variables
+### Model 20
+```{r}
+model_20 <- glm(Audi~price+mileage+mpg+tax+age,family = "binomial",data=df);summary(model_20)
+Anova(model_20, test="Wald") #binary target
+vif(model_20)
+```
+
+Podem observar que la variable tax te un p-valor equivalent quasi a 1 el que vol dir que aquesta variable quasibé no afecta al model, per tant la treurem. 
+
+#### Understanding the model
+```{r}
+plot(allEffects(model_20))
+```
+En aquests gràfics podem apreciar que les variables price i mileage com més alt és el valor d'aquestes més efecte tenen sobre el model. En canvi com hem dit abans la variable tax es manté sempre igual, e un percentatge d'importància baix. El gràfic de mpg disminueix tant ja que a l'haver tants pocs ctxes amb un consum tant gran, aquests quasibé no tenen efecte en el model.
+
+```{r}
+marginalModelPlots(model_20)
+```
+Aquí podem veure que la variable price varia molt de les dades que tenim al model que busquem, només degut a 5 outliers, per tant els eliminarem.
+
+```{r}
+residualPlots(model_20)
+```
+Podem apreciar que en el gràfic de price la línia no és plana sinó que fa una línia mes o menys recta cap a baix.Un altre motiu per a considerar-la factor.
+
+```{r}
+df3 <- df[!df$mout=="YesMOut",]
+df3 <- df2[row.names(df2)!="27649",]
+df3 <- df2[row.names(df2)!="25428",]
+df3 <- df2[row.names(df2)!="8631",]
+df3 <- df2[row.names(df2)!="28762",]
+df3 <- df2[row.names(df2)!="4672",]
+```
+Aquí eliminiem manualment els outliers.
+
+```{r}
+model_20 <- glm(Audi~price+mileage+mpg+age,family = "binomial",data=df3);summary(model_20)
+marginalModelPlots(model_20)
+```
+Després de treure els outliers podem veure com la gràfica real s'apareix més a la del model.
+
+```{r}
+residualPlots(model_20)
+```
+Podem apreciar que en el gràfic de price la línia ara ja és més plana i no té aquella caigud que tenia abans deguda als outliers.
+
+
+Ara començarem a afegir factors al model per veure si depenen o fan canviar algun gràfic.
+### Model 21
+```{r}
+model_21 <- glm(Audi~price+mileage+mpg+age+engineSize,family = "binomial",data=df3);summary(model_21)
+vif(model_21)
+anova(model_20, model_21, test="Chisq")
+Anova(model_21, test="Wald") # binary target
+```
+
+```{r}
+plot(allEffects(model_21))
+```
+Podem veure que els engineSize més petits són els que més afecten ja que són els que més quantitat n'hi ha.
+```{r}
+marginalModelPlots(model_21)
+residualPlots(model_21)
+```
+Podem veure que els gràfics de la variable engineSize segueixen bastant el model previst excepte en el cas del model marginal on al final del gràfic es desvia una mica ja que per les mides més grans de motor hi ha cotxes d'altres marques que no són Audi. 
+
+
+```{r}
+model_22 <- glm(Audi~price+mileage+mpg+age+engineSize+transmission,family = "binomial",data=df3);summary(model_22)
+vif(model_22)
+anova(model_21, model_22, test="Chisq")
+Anova(model_22, test="Wald") #binary target
+```
+
+```{r}
+plot(allEffects(model_22))
+```
+Podem veure que els cotxes amb transmissió semi-automàtica són els que menys afecten ja que són els que menys quantitat n'hi ha, seguits dels que tenen transmissió automàtica.
+```{r}
+marginalModelPlots(model_22)
+residualPlots(model_22)
+```
+A simple vista no podem veure cap canvi digne de donar-li importància en cap dels gràfics donats.
+
+```{r}
+model_23 <- glm(Audi~price+mileage+mpg+age+engineSize+transmission+fuelType,family = "binomial",data=df3);summary(model_23)
+vif(model_23)
+anova(model_22, model_23, test="Chisq")
+Anova(model_23, test="Wald") #binary target
+```
+
+```{r}
+plot(allEffects(model_23))
+```
+Més o menys tots els tipus de combustible tenen la mateixa importància ja que deu haver una quantitat pareguda de cotxes dels tres casos.
+```{r}
+marginalModelPlots(model_23)
+residualPlots(model_23)
+```
+
+Ara canviarem dos dels 
+```{r}
+model_23 <- glm(Audi~price+mileage+mpg+age+engineSize+transmission+fuelType,family = "binomial",data=df3);summary(model_23)
+vif(model_23)
+anova(model_22, model_23, test="Chisq")
+Anova(model_23, test="Wald") #binary target
+```
+
+
+Després d'haver afegit les variables factor que teníem podem concloure mirant els gràfics que aquestes variables no tenen relació amb la variable Audi ja que quasibé no alteren els gràfics finals.
+Les conclusions que hem tret no són diferents a les que esperàvem ja que amb el dataset que teníem podíem esperar uns resultats així. Els cotxes que no són de la marca Audi són d'altres marques prou paregudes respecte al nivell de preus i luxe que oferiex Audi, amb el qual tots els altres cotxes estaven en l'estàdar d'Audi. Trobem que hagués estat diferent si hi haguessin hagut al dataset tant marques molt més cares i luxoses que Audi com d'altres menys luxoses o barates.
+
+
+
+```{r}
+fit.Audi <- factor(ifelse(predict(model_23, type="response")<0.5,0,1), labels=c("fit.no", "fit.yes"))
+tt <- table(fit.Audi,df3$Audi); tt
+100*sum(diag(tt)/sum(tt)) #accuracy
+100*(tt[2,2]/(tt[2,2] + tt[1,2])) # recall (sensitivity)
+100*(tt[1,1]/(tt[1,1] + tt[2,1])) # specificity
+100*(tt[2,2]/(tt[2,1]+ tt[2,2])) # precision
+```
+
+Tenim una precisió del 78.65%. Ens dóna un 2.43% de sensitivitat, el que vol dir que els resultats positius d'aquesta confusion table són molt poc precisos. En canvi quan mirem els resultats negatius obtenim una especificitat del 98,69%, el que és un resultat molt bo. Per acabar, podem veure que la precisió dinal d'aquesta confusion table és del 32,87 %. 
